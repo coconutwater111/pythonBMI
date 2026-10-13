@@ -53,6 +53,11 @@
                   </div>
                 </div>
                 <button type="submit">計算 BMI <span aria-hidden="true">↗</span></button>
+                <p class="bmi-preview" id="bmi-preview" aria-live="polite" hidden>
+                  <span>即時計算預覽</span>
+                  <strong id="bmi-preview-value"></strong>
+                  <span>BMI</span>
+                </p>
               </form>
             </div>
           </div>
@@ -100,5 +105,42 @@
       </main>
       <footer>© 好好生活 <span>TAKE CARE, EVERY DAY.</span></footer>
     </div>
+    <script>
+      const heightInput = document.querySelector("#height");
+      const weightInput = document.querySelector("#weight");
+      const preview = document.querySelector("#bmi-preview");
+      const previewValue = document.querySelector("#bmi-preview-value");
+
+      function updateBmiPreview() {
+        const height = Number(heightInput.value);
+        const weight = Number(weightInput.value);
+        const heightSquared = (height / 100) ** 2;
+        const bmi = weight / heightSquared;
+
+        if (
+          !Number.isFinite(height) ||
+          !Number.isFinite(weight) ||
+          height <= 0 ||
+          weight <= 0 ||
+          !Number.isFinite(heightSquared) ||
+          heightSquared === 0 ||
+          !Number.isFinite(bmi) ||
+          bmi <= 0
+        ) {
+          preview.hidden = true;
+          return;
+        }
+
+        const displayedBmi = Number(bmi.toFixed(1));
+        previewValue.textContent = displayedBmi.toFixed(1);
+        preview.classList.toggle("low", displayedBmi < 18.5);
+        preview.classList.toggle("high", displayedBmi >= 24);
+        preview.hidden = false;
+      }
+
+      heightInput.addEventListener("input", updateBmiPreview);
+      weightInput.addEventListener("input", updateBmiPreview);
+      updateBmiPreview();
+    </script>
   </body>
 </html>

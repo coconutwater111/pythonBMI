@@ -21,6 +21,17 @@ class BmiAppTests(unittest.TestCase):
         self.assertIn("健康體位", page)
         self.assertIn("維持均衡飲食", page)
 
+    def test_low_and_high_results_have_distinct_tones(self):
+        for weight, tone, category in [
+            ("18.4", "low", "體重過輕"),
+            ("24", "high", "體重過重"),
+        ]:
+            with self.subTest(weight=weight):
+                response = self.client.post("/", data={"height": "100", "weight": weight})
+                page = response.get_data(as_text=True)
+                self.assertIn(f'class="result-panel {tone}"', page)
+                self.assertIn(category, page)
+
     def test_taiwan_adult_thresholds(self):
         for bmi, category in [
             (18.4, "體重過輕"),
@@ -45,7 +56,7 @@ class BmiAppTests(unittest.TestCase):
     def test_input_is_escaped(self):
         response = self.client.post("/", data={"height": '<script>alert(1)</script>', "weight": "65"})
         page = response.get_data(as_text=True)
-        self.assertNotIn("<script>", page)
+        self.assertNotIn("<script>alert(1)</script>", page)
         self.assertIn("請輸入大於 0", page)
 
 
