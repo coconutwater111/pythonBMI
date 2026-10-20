@@ -1,8 +1,63 @@
 import math
+import os
+import sqlite3
+from datetime import datetime
 
-from flask import Flask, render_template, request
+from flask import Flask, g, render_template, request
 
 app = Flask(__name__)
+app.config["DATABASE"] = os.environ.get(
+    "BMI_DATABASE_PATH", os.path.join(app.instance_path, "bmi_history.db")
+)
+
+
+def get_db():
+    if "db" not in g:
+        database_path = app.config["DATABASE"]
+        os.makedirs(os.path.dirname(os.path.abspath(database_path)), exist_ok=True)
+        g.db = sqlite3.connect(database_path)
+        g.db.row_factory = sqlite3.Row
+        g.db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS bmi_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_name TEXT NOT NULL,
+                bmi REAL NOT NULL,
+                calculated_at TEXT NOT NULL
+            )
+            """
+        )
+    return g.db
+
+
+@app.teardown_appcontext
+def close_db(_error):
+    database = g.pop("db", None)
+    if database is not None:
+        database.close()
+
+
+def get_users():
+    return get_db().execute(
+        """
+        SELECT user_name, COUNT(*) AS record_count
+        FROM bmi_history
+        GROUP BY user_name
+        ORDER BY user_name COLLATE NOCASE, user_name
+        """
+    ).fetchall()
+
+
+def get_user_history(user_name):
+    return get_db().execute(
+        """
+        SELECT bmi, calculated_at
+        FROM bmi_history
+        WHERE user_name = ?
+        ORDER BY calculated_at DESC, id DESC
+        """,
+        (user_name,),
+    ).fetchall()
 
 
 def bmi_guidance(bmi):
@@ -41,14 +96,21 @@ def parse_positive_number(value):
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+    name_input = ""
     height_input = ""
     weight_input = ""
     errors = {}
     result = None
 
     if request.method == "POST":
+        name_input = request.form.get("name", "").strip()
         height_input = request.form.get("height", "").strip()
         weight_input = request.form.get("weight", "").strip()
+        if not name_input:
+            errors["name"] = "請輸入姓名。"
+        elif len(name_input) > 80:
+            errors["name"] = "姓名不可超過 80 個字元。"
+
         height = parse_positive_number(height_input)
         weight = parse_positive_number(weight_input)
 
@@ -69,13 +131,34 @@ def index():
                 else:
                     displayed_bmi = round(bmi, 1)
                     result = {"bmi": f"{displayed_bmi:.1f}", **bmi_guidance(displayed_bmi)}
+                    get_db().execute(
+                        """
+                        INSERT INTO bmi_history (user_name, bmi, calculated_at)
+                        VALUES (?, ?, ?)
+                        """,
+                        (
+                            name_input,
+                            displayed_bmi,
+                            datetime.now().astimezone().isoformat(timespec="seconds"),
+                        ),
+                    )
+                    get_db().commit()
+
+    selected_user = request.args.get("user", "").strip()
+    users = get_users()
+    if selected_user and not any(user["user_name"] == selected_user for user in users):
+        selected_user = ""
 
     return render_template(
         "index.html",
+        name_input=name_input,
         height_input=height_input,
         weight_input=weight_input,
         errors=errors,
         result=result,
+        users=users,
+        selected_user=selected_user,
+        user_history=get_user_history(selected_user) if selected_user else [],
     )
 
 

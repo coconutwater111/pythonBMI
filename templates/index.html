@@ -22,7 +22,7 @@
           <div class="hero-copy">
             <span class="eyebrow"><span class="eyebrow-dot"></span> YOUR HEALTH, YOUR PACE</span>
             <h1 id="page-title">了解自己的<br><em>健康狀況。</em></h1>
-            <p class="intro">輸入身高與體重，快速算出 BMI，找到適合自己的健康生活方向。</p>
+            <p class="intro">輸入姓名、身高與體重，快速算出 BMI，找到適合自己的健康生活方向。</p>
 
             <div class="calculator">
               <div class="card-heading">
@@ -34,6 +34,13 @@
               </div>
 
               <form method="post" action="{{ url_for('index') }}" novalidate>
+                <div class="field name-field">
+                  <label for="name">姓名 <span>NAME</span></label>
+                  <div class="input-wrap">
+                    <input id="name" name="name" type="text" maxlength="80" autocomplete="name" placeholder="輸入姓名以保存 BMI 紀錄" value="{{ name_input }}" required {% if errors.name %}aria-invalid="true" aria-describedby="name-error"{% endif %}>
+                  </div>
+                  {% if errors.name %}<p class="field-error" id="name-error">{{ errors.name }}</p>{% endif %}
+                </div>
                 <div class="form-fields">
                   <div class="field">
                     <label for="height">身高 <span>HEIGHT</span></label>
@@ -87,9 +94,54 @@
           </div>
         </section>
 
+        <section class="history-section" aria-labelledby="history-title">
+          <div class="history-heading">
+            <div>
+              <span class="section-number">02 / YOUR HISTORY</span>
+              <h2 id="history-title">用戶 BMI 紀錄</h2>
+            </div>
+            <span class="history-caption">選擇姓名查看歷次計算</span>
+          </div>
+          {% if users %}
+            <ul class="user-list">
+              {% for user in users %}
+                <li>
+                  <a class="user-link{% if selected_user == user.user_name %} selected{% endif %}" href="{{ url_for('index', user=user.user_name) }}">
+                    <span>{{ user.user_name }}</span>
+                    <span class="record-count">{{ user.record_count }} 筆 <span aria-hidden="true">↗</span></span>
+                  </a>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="empty-history">尚無計算紀錄。輸入姓名並完成 BMI 計算後，紀錄會顯示在這裡。</p>
+          {% endif %}
+
+          {% if selected_user %}
+            <div class="history-detail">
+              <h3>{{ selected_user }} 的歷次 BMI</h3>
+              <div class="history-table-wrap">
+                <table>
+                  <thead>
+                    <tr><th scope="col">計算時間</th><th scope="col">BMI</th></tr>
+                  </thead>
+                  <tbody>
+                    {% for record in user_history %}
+                      <tr>
+                        <td><time datetime="{{ record.calculated_at }}">{{ record.calculated_at.replace("T", " ") }}</time></td>
+                        <td><strong>{{ "%.1f"|format(record.bmi) }}</strong></td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {% endif %}
+        </section>
+
         <section class="information" aria-labelledby="about-title">
           <div class="about">
-            <span class="section-number">02 / GOOD TO KNOW</span>
+            <span class="section-number">03 / GOOD TO KNOW</span>
             <h2 id="about-title">BMI 是什麼？</h2>
             <p>BMI（身體質量指數）是以體重與身高估算體位的簡易指標。計算方式為 <strong>體重（公斤）÷ 身高（公尺）的平方</strong>。</p>
           </div>
