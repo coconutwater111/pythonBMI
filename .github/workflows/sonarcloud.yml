@@ -1,0 +1,53 @@
+name: SonarCloud
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - app.py
+      - serve.py
+      - requirements.txt
+      - templates/**
+      - static/**
+      - tests/**
+      - sonar-project.properties
+      - .github/workflows/sonarcloud.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - app.py
+      - serve.py
+      - requirements.txt
+      - templates/**
+      - static/**
+      - tests/**
+      - sonar-project.properties
+      - .github/workflows/sonarcloud.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies and run tests
+        run: |
+          python -m pip install -r requirements.txt
+          python -m unittest discover -s tests
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v8.3.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECTKEY: ${{ secrets.SONAR_PROJECTKEY }}
+          SONAR_ORGKEY: ${{ secrets.SONAR_ORGKEY }}
